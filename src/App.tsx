@@ -1,4 +1,4 @@
-import { MIUGame } from './components/MIUGame'
+import { MIUGame } from './games/miu/components/MIUGame'
 import './App.css'
 
 function App() {
