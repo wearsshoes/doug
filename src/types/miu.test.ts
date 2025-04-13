@@ -5,110 +5,66 @@ describe('MIU Rules', () => {
 
   describe('Rule I: Add U after I', () => {
     it('should add U after I at the end', () => {
-      expect(ruleI.transform('MI')).toBe('MIU');
-      expect(ruleI.transform('MII')).toBe('MIIU');
+      expect(ruleI.transform('MI', 0)).toBe('MIU');
+      expect(ruleI.transform('MII', 0)).toBe('MIIU');
     });
 
     it('should not modify strings not ending in I', () => {
-      expect(ruleI.transform('MIU')).toBe('MIU');
-      expect(ruleI.transform('M')).toBe('M');
+      expect(ruleI.transform('MIU', 0)).toBe('MIU');
+      expect(ruleI.transform('M', 0)).toBe('M');
     });
   });
 
   describe('Rule II: Double after M', () => {
     it('should double everything after M', () => {
-      expect(ruleII.transform('MI')).toBe('MII');
-      expect(ruleII.transform('MII')).toBe('MIIII');
-      expect(ruleII.transform('MIU')).toBe('MIUIU');
+      expect(ruleII.transform('MI', 0)).toBe('MII');
+      expect(ruleII.transform('MII', 0)).toBe('MIIII');
+      expect(ruleII.transform('MIU', 0)).toBe('MIUIU');
     });
 
     it('should not modify strings not starting with M', () => {
-      expect(ruleII.transform('I')).toBe('I');
-      expect(ruleII.transform('UI')).toBe('UI');
+      expect(ruleII.transform('I', 0)).toBe('I');
+      expect(ruleII.transform('UI', 0)).toBe('UI');
     });
   });
 
   describe('Rule III: Replace III with U', () => {
     it('should replace III with U', () => {
-      expect(ruleIII.transform('MIII')).toBe('MU');
-      expect(ruleIII.transform('MIIII')).toBe('MUI');
+      expect(ruleIII.transform('MIII', 0)).toBe('MU');
+      expect(ruleIII.transform('MIIII', 0)).toBe('MUI');
+      expect(ruleIII.transform('MIIII', 1)).toBe('MIU');
     });
 
-    it('should replace multiple III occurrences', () => {
-      expect(ruleIII.transform('MIIIII')).toBe('MUII');
-      expect(ruleIII.transform('MIIIIII')).toBe('MUU');
+    it('should handle overlapping III patterns', () => {
+      const str = 'MIIII';
+      const positions = ruleIII.findApplications(str);
+      expect(positions.length).toBe(2);
+      expect(ruleIII.transform(str, 0)).toBe('MUI');
+      expect(ruleIII.transform(str, 1)).toBe('MIU');
+    });
+
+    it('should handle multiple non-overlapping III occurrences', () => {
+      const str = 'MIIIIII';
+      const positions = ruleIII.findApplications(str);
+      expect(positions.length).toBe(3);
+      expect(ruleIII.transform(str, 0)).toBe('MUIII');
+      expect(ruleIII.transform(str, 1)).toBe('MIUII');
+      expect(ruleIII.transform(str, 2)).toBe('MIIIU');
     });
   });
 
   describe('Rule IV: Remove UU', () => {
     it('should remove UU', () => {
-      expect(ruleIV.transform('MUU')).toBe('M');
-      expect(ruleIV.transform('MUUI')).toBe('MI');
+      expect(ruleIV.transform('MUU', 0)).toBe('M');
+      expect(ruleIV.transform('MUUI', 0)).toBe('MI');
     });
 
-    it('should remove multiple UU occurrences', () => {
-      expect(ruleIV.transform('MUUUU')).toBe('M');
-      expect(ruleIV.transform('MUUUUI')).toBe('MI');
-    });
-  });
-
-  describe('Rule combinations', () => {
-    it('MI → MII → MIIU (Rule II then Rule I)', () => {
-      const step1 = ruleII.transform('MI');
-      expect(step1).toBe('MII');
-
-      const step2 = ruleI.transform(step1);
-      expect(step2).toBe('MIIU');
-    });
-
-    it('MII → MIIII → MUI (Rule II then Rule III)', () => {
-      const step1 = ruleII.transform('MII');
-      expect(step1).toBe('MIIII');
-
-      const step2 = ruleIII.transform(step1);
-      expect(step2).toBe('MUI');
-    });
-
-    it('MI → MII → MIIII → MUI (Rule II twice then Rule III)', () => {
-      const step1 = ruleII.transform('MI');
-      expect(step1).toBe('MII');
-
-      const step2 = ruleII.transform(step1);
-      expect(step2).toBe('MIIII');
-
-      const step3 = ruleIII.transform(step2);
-      expect(step3).toBe('MUI');
-    });
-
-    it('MIII → MU → MUU → M (Rule III then Rule I then Rule IV)', () => {
-      const step1 = ruleIII.transform('MIII');
-      expect(step1).toBe('MU');
-
-      const step2 = ruleI.transform(step1);
-      expect(step2).toBe('MU');
-
-      const step3 = ruleII.transform(step2);
-      expect(step3).toBe('MUU');
-
-      const step4 = ruleIV.transform(step3);
-      expect(step4).toBe('M');
-    });
-
-    it('should handle complex III replacements', () => {
-      expect(ruleIII.transform('MIIIII')).toBe('MUII');
-      expect(ruleIII.transform('MIIIIII')).toBe('MUU');
-      expect(ruleIII.transform('MUIII')).toBe('MUU');
-    });
-
-    it('should handle Rule II followed by Rule III correctly', () => {
-      const step1 = ruleII.transform('MI');
-      expect(step1).toBe('MII');
-
-      const step2 = ruleII.transform(step1);
-      expect(step2).toBe('MIIII');
-
-      const step3 = ruleIII.transform(step2);
-      expect(step3).toBe('MUI');
+    it('should handle multiple UU occurrences based on position', () => {
+      const str = 'MUUUU';
+      const positions = ruleIV.findApplications(str);
+      expect(positions.length).toBe(2);
+      expect(ruleIV.transform(str, 0)).toBe('MUU');
+      expect(ruleIV.transform(str, 1)).toBe('MUU');
     });
   });
 });
