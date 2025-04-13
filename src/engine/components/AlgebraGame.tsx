@@ -58,9 +58,9 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
 
     const positions = ruleDirection.findApplications(effectiveChain.currentString);
     if (positions.length === 0) return;
-    
+
     const hasMultiplePositions = positions.length > 1;
-    
+
     setBidirectionalChain(currentBiChain => {
       const newBiChain = applyRuleToBidirectionalChain(
         currentBiChain,
@@ -68,11 +68,11 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
         0,
         effectiveDirection
       );
-      
+
       const forward = newBiChain.forward;
       const reverse = newBiChain.reverse;
       let meetingPoint: string | null = null;
-      
+
       for (const fStr of forward.intermediateStrings) {
         for (const rStr of reverse.intermediateStrings) {
           if (fStr === rStr) {
@@ -102,8 +102,8 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
     else if (expandedRuleIndex !== null && index < expandedRuleIndex) {
       setExpandedRuleIndex(expandedRuleIndex - 1);
     }
-    
-    setBidirectionalChain(currentBiChain => 
+
+    setBidirectionalChain(currentBiChain =>
       deleteRuleFromBidirectionalChain(currentBiChain, index, activeDirection)
     );
   };
@@ -111,7 +111,7 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
   const togglePositions = (index: number) => {
     const ruleApp = activeChain.rules[index];
     if (!ruleApp) return;
-    
+
     const positions = ruleApp.rule[activeDirection].findApplications(activeChain.intermediateStrings[index]);
     if (!positions || positions.length <= 1) return;
 
@@ -261,92 +261,87 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
               </DroppableArea>
             </div>
 
-            {bidirectionalChain.meetingPoint && (
-              <div className="meeting-point">
-                <span>Solution found at: {bidirectionalChain.meetingPoint}</span>
-                {currentLevelIndex < config.levels.length - 1 && (
-                  <button onClick={nextLevel} className="next-level-button">
-                    Next Level →
-                  </button>
-                )}
-              </div>
-            )}
-
             <div className="reverse-chain">
               <DroppableArea onDrop={(rule) => handleRuleDrop(rule, 'backward')}>
                 <table className="transformation-table">
-                  <thead>
-                    <tr>
-                      <th>Rule</th>
-                      <th>Result</th>
-                    </tr>
-                  </thead>
                   <tbody>
                     {bidirectionalChain.reverse.rules.length === 0 ? (
-                      <tr>
-                        <td colSpan={2}>
-                          <div className="empty-state">
-                            Drag or click a rule
-                          </div>
-                        </td>
-                      </tr>
+                      <>
+                        <tr>
+                          <td colSpan={2}>
+                            <div className="empty-state">
+                              Drag or click a rule
+                            </div>
+                          </td>
+                        </tr>
+                        <tr className="table-footer">
+                          <td>Rule</td>
+                          <td className="reverse-result">Result</td>
+                        </tr>
+                      </>
                     ) : (
-                      [...bidirectionalChain.reverse.rules].reverse().map((ruleApp, reversedIndex) => {
-                        const index = bidirectionalChain.reverse.rules.length - 1 - reversedIndex;
-                        const positions = ruleApp.rule[activeDirection].findApplications(bidirectionalChain.reverse.intermediateStrings[index]);
-                        const isExpanded = expandedRuleIndex === index && activeDirection === 'backward';
-                        const hasMultiplePositions = positions && positions.length > 1;
+                      <>
+                        {[...bidirectionalChain.reverse.rules].reverse().map((ruleApp, reversedIndex) => {
+                          const index = bidirectionalChain.reverse.rules.length - 1 - reversedIndex;
+                          const positions = ruleApp.rule[activeDirection].findApplications(bidirectionalChain.reverse.intermediateStrings[index]);
+                          const isExpanded = expandedRuleIndex === index && activeDirection === 'backward';
+                          const hasMultiplePositions = positions && positions.length > 1;
 
-                        return (
-                          <tr key={`reverse-${ruleApp.rule.id}-${index}`}>
-                            <td>
-                              <div className={`applied-rule ${index >= bidirectionalChain.reverse.validUpTo ? 'invalid' : ''}`}>
-                                <div className="applied-rule-header">
-                                  <span>{ruleApp.rule.name}</span>
-                                  {hasMultiplePositions && (
-                                    <button
-                                      onClick={() => togglePositions(index)}
-                                      className="toggle-positions"
-                                    >
-                                      {isExpanded ? 'Hide positions' : 'Show positions'}
-                                    </button>
-                                  )}
-                                  <button
-                                    onClick={() => deleteRule(index)}
-                                    className="delete-rule"
-                                    title="Delete this rule and revalidate sequence"
-                                    aria-label={`Delete ${ruleApp.rule.name}`}
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-                                {isExpanded && positions && (
-                                  <div className="position-options-inline">
-                                    {positions.map((pos: RuleApplication, posIndex: number) => (
-                                      <div
-                                        key={posIndex}
-                                        className={`position-option-inline ${posIndex === ruleApp.position ? 'selected' : ''}`}
-                                        onClick={() => changePosition(index, posIndex)}
+                          return (
+                            <tr key={`reverse-${ruleApp.rule.id}-${index}`}>
+                              <td>
+                                <div className={`applied-rule ${index >= bidirectionalChain.reverse.validUpTo ? 'invalid' : ''}`}>
+                                  <div className="applied-rule-header">
+                                    <span>{ruleApp.rule.name}</span>
+                                    {hasMultiplePositions && (
+                                      <button
+                                        onClick={() => togglePositions(index)}
+                                        className="toggle-positions"
                                       >
-                                        <div className="preview-string-inline">
-                                          <span>{pos.preview.slice(0, pos.startIndex)}</span>
-                                          <span className="highlight">{pos.preview.slice(pos.startIndex, pos.endIndex)}</span>
-                                          <span>{pos.preview.slice(pos.endIndex)}</span>
-                                        </div>
-                                      </div>
-                                    ))}
+                                        {isExpanded ? 'Hide positions' : 'Show positions'}
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => deleteRule(index)}
+                                      className="delete-rule"
+                                      title="Delete this rule and revalidate sequence"
+                                      aria-label={`Delete ${ruleApp.rule.name}`}
+                                    >
+                                      ×
+                                    </button>
                                   </div>
-                                )}
-                              </div>
-                            </td>
-                            <td>
-                              <span className="string-value">
-                                {bidirectionalChain.reverse.intermediateStrings[index + 1]}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })
+                                  {isExpanded && positions && (
+                                    <div className="position-options-inline">
+                                      {positions.map((pos: RuleApplication, posIndex: number) => (
+                                        <div
+                                          key={posIndex}
+                                          className={`position-option-inline ${posIndex === ruleApp.position ? 'selected' : ''}`}
+                                          onClick={() => changePosition(index, posIndex)}
+                                        >
+                                          <div className="preview-string-inline">
+                                            <span>{pos.preview.slice(0, pos.startIndex)}</span>
+                                            <span className="highlight">{pos.preview.slice(pos.startIndex, pos.endIndex)}</span>
+                                            <span>{pos.preview.slice(pos.endIndex)}</span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="reverse-result">
+                                <span className="string-value">
+                                  {bidirectionalChain.reverse.intermediateStrings[index + 1]}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        <tr className="table-footer">
+                          <td>Rule</td>
+                          <td className="reverse-result">Result</td>
+                        </tr>
+                      </>
                     )}
                   </tbody>
                 </table>
@@ -358,20 +353,32 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
               <div className="string-value">{currentLevel.targetString}</div>
             </div>
           </div>
+          <div>
+          {bidirectionalChain.meetingPoint && (
+              <div className="meeting-point">
+                <span>Solution found! Common string: {bidirectionalChain.meetingPoint}</span>
+                {currentLevelIndex < config.levels.length - 1 && (
+                  <button onClick={nextLevel} className="next-level-button">
+                    Next Level →
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="rules-panel">
           <div className="rules-header">
             <h2>Available Rules</h2>
             <div className="direction-toggle">
-              <button 
-                className={activeDirection === 'forward' ? 'active' : ''} 
+              <button
+                className={activeDirection === 'forward' ? 'active' : ''}
                 onClick={() => setActiveDirection('forward')}
               >
                 Forward
               </button>
-              <button 
-                className={activeDirection === 'backward' ? 'active' : ''} 
+              <button
+                className={activeDirection === 'backward' ? 'active' : ''}
                 onClick={() => setActiveDirection('backward')}
               >
                 Backward
@@ -389,7 +396,7 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
                   canAddNewRules && canApplyRule(
                     rule,
                     activeDirection,
-                    activeDirection === 'forward' 
+                    activeDirection === 'forward'
                       ? bidirectionalChain.forward.currentString
                       : bidirectionalChain.reverse.currentString
                   )

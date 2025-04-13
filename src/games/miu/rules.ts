@@ -189,11 +189,13 @@ export const Rules: BidirectionalRule[] = [
     },
     backward: {
       name: 'Insert UU',
-      description: 'Insert UU anywhere',
+      description: 'Insert UU anywhere (except before M)',
       findApplications: (s: string) => {
         const positions: RuleApplication[] = [];
-        // Can insert UU at any position, including start and end
+        // Can insert UU at any position, except before M at the start
         for (let i = 0; i <= s.length; i++) {
+          // Skip position 0 if string starts with M
+          if (i === 0 && s.startsWith('M')) continue;
           positions.push({
             startIndex: i,
             endIndex: i,

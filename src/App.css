@@ -1,7 +1,6 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+  width: 100%;
+  min-height: 100vh;
 }
 
 .app {
@@ -12,38 +11,95 @@
   align-items: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.level-selector {
+  margin: 1rem 0;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.level-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.level-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--background-color);
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.card {
-  padding: 2em;
+.level-button:hover {
+  border-color: var(--link-color);
+  background: var(--button-background);
 }
 
-.read-the-docs {
-  color: #888;
+.level-button.active {
+  border-color: var(--link-color);
+  background: var(--button-background);
+}
+
+.difficulty {
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+.reset-button {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.direction-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.direction-toggle button {
+  flex: 1;
+  text-align: center;
+}
+
+.direction-toggle button.active {
+  border-color: var(--link-color);
+  background: var(--button-background);
+}
+
+.level-description {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: var(--button-background);
+  border-radius: 8px;
+  color: var(--text-color);
+}
+
+.delete-rule {
+  padding: 0.2em 0.6em;
+  font-size: 1.2em;
+  line-height: 1;
+  color: var(--error-color);
+  background: transparent;
+  border: none;
+}
+
+.delete-rule:hover {
+  background: var(--error-background);
+}
+
+.toggle-positions {
+  padding: 0.3em 0.6em;
+  font-size: 0.9em;
+  color: var(--link-color);
+  background: transparent;
+  border: 1px solid var(--link-color);
+}
+
+.toggle-positions:hover {
+  background: var(--button-background);
 }

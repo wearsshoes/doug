@@ -107,13 +107,12 @@ describe('MIU Rules', () => {
     });
 
     describe('backward: Insert UU', () => {
-      it('should insert UU at any position', () => {
+      it('should insert UU at any position except before M', () => {
         const str = 'MI';
         const positions = ruleIV.backward.findApplications(str);
-        expect(positions.length).toBe(3); // Start, between M and I, end
-        expect(ruleIV.backward.transform(str, 0)).toBe('UUMI');
-        expect(ruleIV.backward.transform(str, 1)).toBe('MUUI');
-        expect(ruleIV.backward.transform(str, 2)).toBe('MIUU');
+        expect(positions.length).toBe(2); // Between M and I, and end (not at start since string starts with M)
+        expect(ruleIV.backward.transform(str, 0)).toBe('MUUI');
+        expect(ruleIV.backward.transform(str, 1)).toBe('MIUU');
       });
     });
   });
