@@ -5,13 +5,19 @@ export interface RuleApplication {
   preview: string;
 }
 
-export interface Rule {
-  id: string;
+export interface RuleDirection {
   name: string;
   description: string;
   findApplications: (s: string) => RuleApplication[];
   transform: (s: string, position: number) => string;
-  direction?: 'forward' | 'reverse' | 'both';
+}
+
+export interface BidirectionalRule {
+  id: string;
+  name: string;
+  description: string;
+  forward: RuleDirection;
+  backward: RuleDirection;
 }
 
 export interface Level {
@@ -23,17 +29,18 @@ export interface Level {
 }
 
 export interface GameConfig {
-  rules: Rule[];
+  rules: BidirectionalRule[];
   levels: Level[];
 }
 
 export interface GameState {
   currentString: string;
   targetString: string;
-  appliedRules: Rule[];
+  appliedRules: BidirectionalRule[];
   isComplete: boolean;
 }
 
-export function canApplyRule(rule: Rule, currentString: string): boolean {
-  return rule.findApplications(currentString).length > 0;
+export function canApplyRule(rule: BidirectionalRule, direction: 'forward' | 'backward', currentString: string): boolean {
+  const ruleDirection = direction === 'forward' ? rule.forward : rule.backward;
+  return ruleDirection.findApplications(currentString).length > 0;
 }

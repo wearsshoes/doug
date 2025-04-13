@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Rule, Level, GameConfig, canApplyRule } from '../types/types';
-import { RuleChain, computeRuleChain, applyRuleToChain, deleteRuleFromChain } from '../types/ruleChain';
+import { Level, GameConfig, canApplyRule, BidirectionalRule, RuleApplication } from '../types/types';
 import { BidirectionalChain, computeBidirectionalChain, applyRuleToBidirectionalChain, deleteRuleFromBidirectionalChain } from '../types/ruleChain';
 import { DraggableRule } from './DraggableRule';
 import { DroppableArea } from './DroppableArea';
@@ -18,7 +17,7 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
   const currentLevel = config.levels[currentLevelIndex];
   const [expandedRuleIndex, setExpandedRuleIndex] = useState<number | null>(null);
-  const [activeDirection, setActiveDirection] = useState<'forward' | 'reverse'>('forward');
+  const [activeDirection, setActiveDirection] = useState<'forward' | 'backward'>('forward');
 
   const getInitialChain = (level: Level): BidirectionalChain =>
     computeBidirectionalChain(level.startString, level.targetString, [], []);
@@ -47,19 +46,29 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
     }
   };
 
-  const handleRuleSelect = (rule: Rule, isDrop: boolean = false) => {
-    if (activeChain.validUpTo < activeChain.rules.length) {
+  const handleRuleSelect = (rule: BidirectionalRule, isDrop: boolean = false, dropDirection?: 'forward' | 'backward') => {
+    const effectiveDirection = dropDirection || activeDirection;
+    const effectiveChain = effectiveDirection === 'forward' ? bidirectionalChain.forward : bidirectionalChain.reverse;
+    const ruleDirection = effectiveDirection === 'forward' ? rule.forward : rule.backward;
+
+    if (effectiveChain.validUpTo < effectiveChain.rules.length) {
       console.log('Cannot add new rule: chain contains invalid rules');
       return;
     }
 
-    const positions = rule.findApplications(activeChain.currentString);
+    const positions = ruleDirection.findApplications(effectiveChain.currentString);
     if (positions.length === 0) return;
     
     const hasMultiplePositions = positions.length > 1;
     
     setBidirectionalChain(currentBiChain => {
-      const newBiChain = applyRuleToBidirectionalChain(currentBiChain, rule, 0, activeDirection);
+      const newBiChain = applyRuleToBidirectionalChain(
+        currentBiChain,
+        rule,
+        0,
+        effectiveDirection
+      );
+      
       const forward = newBiChain.forward;
       const reverse = newBiChain.reverse;
       let meetingPoint: string | null = null;
@@ -78,12 +87,12 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
     });
 
     if (!isDrop && hasMultiplePositions) {
-      setExpandedRuleIndex(activeChain.rules.length);
+      setExpandedRuleIndex(effectiveChain.rules.length);
     }
   };
 
-  const handleRuleDrop = (rule: Rule) => {
-    handleRuleSelect(rule, true);
+  const handleRuleDrop = (rule: BidirectionalRule, dropDirection: 'forward' | 'backward') => {
+    handleRuleSelect(rule, true, dropDirection);
   };
 
   const deleteRule = (index: number) => {
@@ -99,13 +108,11 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
     );
   };
 
-  const isComplete = Boolean(bidirectionalChain.meetingPoint);
-
   const togglePositions = (index: number) => {
     const ruleApp = activeChain.rules[index];
     if (!ruleApp) return;
     
-    const positions = ruleApp.rule.findApplications(activeChain.intermediateStrings[index]);
+    const positions = ruleApp.rule[activeDirection].findApplications(activeChain.intermediateStrings[index]);
     if (!positions || positions.length <= 1) return;
 
     setExpandedRuleIndex(expandedRuleIndex === index ? null : index);
@@ -166,154 +173,230 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
         </div>
 
         <div className="main-content">
-          <div className="direction-toggle">
-            <button
-              onClick={() => setActiveDirection('forward')}
-              className={activeDirection === 'forward' ? 'active' : ''}
-            >
-              Forward (Start → Target)
-            </button>
-            <button
-              onClick={() => setActiveDirection('reverse')}
-              className={activeDirection === 'reverse' ? 'active' : ''}
-            >
-              Reverse (Target → Start)
-            </button>
-          </div>
-
           <div>
             <p className="level-description">{currentLevel.description}</p>
           </div>
 
-          <div className="string-display">
-            <div className="initial-string">
-              <span className="string-value">
-                {activeDirection === 'forward' ? 
-                  bidirectionalChain.forward.intermediateStrings[0] :
-                  bidirectionalChain.reverse.intermediateStrings[0]}
-              </span>
+          <div className="chain-container">
+            <div className="string-display initial">
+              <div className="string-label">Initial String</div>
+              <div className="string-value">{currentLevel.startString}</div>
             </div>
-          </div>
 
-          <div className="game-workspace">
-            <DroppableArea onDrop={handleRuleDrop}>
-              <table className="transformation-table">
-                <thead>
-                  <tr>
-                    <th>Applied Rule</th>
-                    <th>Resulting String</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activeChain.rules.length === 0 ? (
+            <div className="forward-chain">
+              <DroppableArea onDrop={(rule) => handleRuleDrop(rule, 'forward')}>
+                <table className="transformation-table">
+                  <thead>
                     <tr>
-                      <td colSpan={2}>
-                        <div className="empty-state">
-                          Drag a rule here or click an applicable rule to start transforming the string
-                        </div>
-                      </td>
+                      <th>Rule</th>
+                      <th>Result</th>
                     </tr>
-                  ) : (
-                    activeChain.rules.map((ruleApp, index) => {
-                      const positions = ruleApp.rule.findApplications(activeChain.intermediateStrings[index]);
-                      const isExpanded = expandedRuleIndex === index;
-                      const hasMultiplePositions = positions && positions.length > 1;
+                  </thead>
+                  <tbody>
+                    {bidirectionalChain.forward.rules.length === 0 ? (
+                      <tr>
+                        <td colSpan={2}>
+                          <div className="empty-state">
+                            Drag or click a rule
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      bidirectionalChain.forward.rules.map((ruleApp, index) => {
+                        const positions = ruleApp.rule[activeDirection].findApplications(bidirectionalChain.forward.intermediateStrings[index]);
+                        const isExpanded = expandedRuleIndex === index && activeDirection === 'forward';
+                        const hasMultiplePositions = positions && positions.length > 1;
 
-                      return (
-                        <tr key={`${ruleApp.rule.id}-${index}`}>
-                          <td>
-                            <div className={`applied-rule ${index >= activeChain.validUpTo ? 'invalid' : ''}`}>
-                              <div className="applied-rule-header">
-                                <span>{ruleApp.rule.name}</span>
-                                {hasMultiplePositions && (
-                                  <button
-                                    onClick={() => togglePositions(index)}
-                                    className="toggle-positions"
-                                  >
-                                    {isExpanded ? 'Hide positions' : 'Show positions'}
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => deleteRule(index)}
-                                  className="delete-rule"
-                                  title="Delete this rule and revalidate sequence"
-                                  aria-label={`Delete ${ruleApp.rule.name}`}
-                                >
-                                  ×
-                                </button>
-                              </div>
-                              {isExpanded && positions && (
-                                <div className="position-options-inline">
-                                  {positions.map((pos, posIndex) => (
-                                    <div
-                                      key={posIndex}
-                                      className={`position-option-inline ${posIndex === ruleApp.position ? 'selected' : ''}`}
-                                      onClick={() => changePosition(index, posIndex)}
+                        return (
+                          <tr key={`forward-${ruleApp.rule.id}-${index}`}>
+                            <td>
+                              <div className={`applied-rule ${index >= bidirectionalChain.forward.validUpTo ? 'invalid' : ''}`}>
+                                <div className="applied-rule-header">
+                                  <span>{ruleApp.rule.name}</span>
+                                  {hasMultiplePositions && (
+                                    <button
+                                      onClick={() => togglePositions(index)}
+                                      className="toggle-positions"
                                     >
-                                      <div className="preview-string-inline">
-                                        <span>{pos.preview.slice(0, pos.startIndex)}</span>
-                                        <span className="highlight">{pos.preview.slice(pos.startIndex, pos.endIndex)}</span>
-                                        <span>{pos.preview.slice(pos.endIndex)}</span>
-                                      </div>
-                                    </div>
-                                  ))}
+                                      {isExpanded ? 'Hide positions' : 'Show positions'}
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => deleteRule(index)}
+                                    className="delete-rule"
+                                    title="Delete this rule and revalidate sequence"
+                                    aria-label={`Delete ${ruleApp.rule.name}`}
+                                  >
+                                    ×
+                                  </button>
                                 </div>
-                              )}
-                            </div>
-                          </td>
-                          <td>
-                            <span className="string-value">{activeChain.intermediateStrings[index + 1]}</span>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </DroppableArea>
-
-            <div className="target-string-display">
-              <div className="target-string">
-                <span className="string-value">
-                  {activeDirection === 'forward' ? 
-                    currentLevel.targetString :
-                    currentLevel.startString}
-                </span>
-              </div>
+                                {isExpanded && positions && (
+                                  <div className="position-options-inline">
+                                    {positions.map((pos: RuleApplication, posIndex: number) => (
+                                      <div
+                                        key={posIndex}
+                                        className={`position-option-inline ${posIndex === ruleApp.position ? 'selected' : ''}`}
+                                        onClick={() => changePosition(index, posIndex)}
+                                      >
+                                        <div className="preview-string-inline">
+                                          <span>{pos.preview.slice(0, pos.startIndex)}</span>
+                                          <span className="highlight">{pos.preview.slice(pos.startIndex, pos.endIndex)}</span>
+                                          <span>{pos.preview.slice(pos.endIndex)}</span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              <span className="string-value">{bidirectionalChain.forward.intermediateStrings[index + 1]}</span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </DroppableArea>
             </div>
 
             {bidirectionalChain.meetingPoint && (
-              <div className="win-message">
-                <p>Congratulations! The chains meet at: {bidirectionalChain.meetingPoint}</p>
+              <div className="meeting-point">
+                <span>Solution found at: {bidirectionalChain.meetingPoint}</span>
                 {currentLevelIndex < config.levels.length - 1 && (
                   <button onClick={nextLevel} className="next-level-button">
-                    Next Level
+                    Next Level →
                   </button>
                 )}
               </div>
             )}
+
+            <div className="reverse-chain">
+              <DroppableArea onDrop={(rule) => handleRuleDrop(rule, 'backward')}>
+                <table className="transformation-table">
+                  <thead>
+                    <tr>
+                      <th>Rule</th>
+                      <th>Result</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bidirectionalChain.reverse.rules.length === 0 ? (
+                      <tr>
+                        <td colSpan={2}>
+                          <div className="empty-state">
+                            Drag or click a rule
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      [...bidirectionalChain.reverse.rules].reverse().map((ruleApp, reversedIndex) => {
+                        const index = bidirectionalChain.reverse.rules.length - 1 - reversedIndex;
+                        const positions = ruleApp.rule[activeDirection].findApplications(bidirectionalChain.reverse.intermediateStrings[index]);
+                        const isExpanded = expandedRuleIndex === index && activeDirection === 'backward';
+                        const hasMultiplePositions = positions && positions.length > 1;
+
+                        return (
+                          <tr key={`reverse-${ruleApp.rule.id}-${index}`}>
+                            <td>
+                              <div className={`applied-rule ${index >= bidirectionalChain.reverse.validUpTo ? 'invalid' : ''}`}>
+                                <div className="applied-rule-header">
+                                  <span>{ruleApp.rule.name}</span>
+                                  {hasMultiplePositions && (
+                                    <button
+                                      onClick={() => togglePositions(index)}
+                                      className="toggle-positions"
+                                    >
+                                      {isExpanded ? 'Hide positions' : 'Show positions'}
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => deleteRule(index)}
+                                    className="delete-rule"
+                                    title="Delete this rule and revalidate sequence"
+                                    aria-label={`Delete ${ruleApp.rule.name}`}
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                                {isExpanded && positions && (
+                                  <div className="position-options-inline">
+                                    {positions.map((pos: RuleApplication, posIndex: number) => (
+                                      <div
+                                        key={posIndex}
+                                        className={`position-option-inline ${posIndex === ruleApp.position ? 'selected' : ''}`}
+                                        onClick={() => changePosition(index, posIndex)}
+                                      >
+                                        <div className="preview-string-inline">
+                                          <span>{pos.preview.slice(0, pos.startIndex)}</span>
+                                          <span className="highlight">{pos.preview.slice(pos.startIndex, pos.endIndex)}</span>
+                                          <span>{pos.preview.slice(pos.endIndex)}</span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              <span className="string-value">
+                                {bidirectionalChain.reverse.intermediateStrings[index + 1]}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </DroppableArea>
+            </div>
+
+            <div className="string-display target">
+              <div className="string-label">Target String</div>
+              <div className="string-value">{currentLevel.targetString}</div>
+            </div>
           </div>
         </div>
 
         <div className="rules-panel">
           <div className="rules-header">
             <h2>Available Rules</h2>
+            <div className="direction-toggle">
+              <button 
+                className={activeDirection === 'forward' ? 'active' : ''} 
+                onClick={() => setActiveDirection('forward')}
+              >
+                Forward
+              </button>
+              <button 
+                className={activeDirection === 'backward' ? 'active' : ''} 
+                onClick={() => setActiveDirection('backward')}
+              >
+                Backward
+              </button>
+            </div>
             <p className="rules-hint">Green outline = rule can be applied (click or drag)</p>
           </div>
           <div className="rules-list">
-            {config.rules
-              .filter(rule => 
-                rule.direction === 'both' || 
-                rule.direction === activeDirection
-              )
-              .map(rule => (
-                <DraggableRule
-                  key={rule.id}
-                  rule={rule}
-                  isApplicable={canAddNewRules && canApplyRule(rule, activeChain.currentString)}
-                  onClick={() => handleRuleSelect(rule)}
-                />
-              ))}
+            {config.rules.map(rule => (
+              <DraggableRule
+                key={rule.id}
+                rule={rule}
+                direction={activeDirection}
+                isApplicable={
+                  canAddNewRules && canApplyRule(
+                    rule,
+                    activeDirection,
+                    activeDirection === 'forward' 
+                      ? bidirectionalChain.forward.currentString
+                      : bidirectionalChain.reverse.currentString
+                  )
+                }
+                onClick={() => handleRuleSelect(rule)}
+              />
+            ))}
           </div>
         </div>
       </div>

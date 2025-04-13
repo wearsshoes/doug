@@ -1,8 +1,9 @@
-import { Rule } from './types';
+import { BidirectionalRule } from './types';
 
 export interface RuleApplication {
-  rule: Rule;
+  rule: BidirectionalRule;
   position: number;
+  direction: 'forward' | 'backward';
 }
 
 export interface RuleChain {
@@ -25,8 +26,9 @@ export function computeRuleChain(startString: string, rules: RuleApplication[]):
 
   // Apply each rule in sequence
   for (let i = 0; i < rules.length; i++) {
-    const { rule, position } = rules[i];
-    const newString = rule.transform(currentString, position);
+    const { rule, position, direction } = rules[i];
+    const ruleDirection = direction === 'forward' ? rule.forward : rule.backward;
+    const newString = ruleDirection.transform(currentString, position);
     if (newString === currentString) {
       // This rule didn't change the string, mark it as the first invalid rule
       validUpTo = i;
@@ -72,8 +74,8 @@ export function computeBidirectionalChain(
   };
 }
 
-export function applyRuleToChain(chain: RuleChain, rule: Rule, position: number): RuleChain {
-  return computeRuleChain(chain.intermediateStrings[0], [...chain.rules, { rule, position }]);
+export function applyRuleToChain(chain: RuleChain, rule: BidirectionalRule, position: number, direction: 'forward' | 'backward'): RuleChain {
+  return computeRuleChain(chain.intermediateStrings[0], [...chain.rules, { rule, position, direction }]);
 }
 
 export function deleteRuleFromChain(chain: RuleChain, index: number): RuleChain {
@@ -83,20 +85,20 @@ export function deleteRuleFromChain(chain: RuleChain, index: number): RuleChain 
 
 export function applyRuleToBidirectionalChain(
   chain: BidirectionalChain,
-  rule: Rule,
+  rule: BidirectionalRule,
   position: number,
-  direction: 'forward' | 'reverse'
+  direction: 'forward' | 'backward'
 ): BidirectionalChain {
   if (direction === 'forward') {
     return {
-      forward: applyRuleToChain(chain.forward, rule, position),
+      forward: applyRuleToChain(chain.forward, rule, position, 'forward'),
       reverse: chain.reverse,
       meetingPoint: null // Recompute meeting point
     };
   } else {
     return {
       forward: chain.forward,
-      reverse: applyRuleToChain(chain.reverse, rule, position),
+      reverse: applyRuleToChain(chain.reverse, rule, position, 'backward'),
       meetingPoint: null // Recompute meeting point
     };
   }
@@ -105,7 +107,7 @@ export function applyRuleToBidirectionalChain(
 export function deleteRuleFromBidirectionalChain(
   chain: BidirectionalChain,
   index: number,
-  direction: 'forward' | 'reverse'
+  direction: 'forward' | 'backward'
 ): BidirectionalChain {
   if (direction === 'forward') {
     return {

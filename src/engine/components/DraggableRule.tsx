@@ -1,46 +1,39 @@
 import { useDrag } from 'react-dnd';
-import { Rule } from '../types/types';
+import { BidirectionalRule } from '../types/types';
 
 interface DraggableRuleProps {
-  rule: Rule;
+  rule: BidirectionalRule;
+  direction: 'forward' | 'backward';
   isApplicable: boolean;
   onClick: () => void;
 }
 
-export function DraggableRule({ rule, isApplicable, onClick }: DraggableRuleProps) {
+export function DraggableRule({ rule, direction, isApplicable, onClick }: DraggableRuleProps) {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'rule',
-    item: rule,
+    item: {
+      id: rule.id,
+      name: rule.name,
+      description: rule.description,
+      forward: rule.forward,
+      backward: rule.backward
+    },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
-    canDrag: isApplicable,
   }));
 
-  const handleClick = () => {
-    if (isApplicable) {
-      onClick();
-    }
-  };
-
-  const notApplicableMessage = isApplicable ? '' : 'Cannot add new rules while there are invalid rules in the chain';
+  const ruleDirection = direction === 'forward' ? rule.forward : rule.backward;
 
   return (
     <div
       ref={drag}
-      onClick={handleClick}
-      className={`rule-card ${isDragging ? 'dragging' : ''} ${isApplicable ? 'applicable' : 'not-applicable'}`}
-      style={{ 
-        opacity: isDragging ? 0.5 : isApplicable ? 1 : 0.5,
-        cursor: isApplicable ? 'pointer' : 'not-allowed'
-      }}
-      role="button"
-      tabIndex={isApplicable ? 0 : -1}
-      aria-disabled={!isApplicable}
-      title={notApplicableMessage}
+      className={`rule-card ${isApplicable ? 'applicable' : 'not-applicable'}`}
+      onClick={isApplicable ? onClick : undefined}
+      style={{ opacity: isDragging ? 0.5 : 1 }}
     >
       <h3>{rule.name}</h3>
-      <p>{rule.description}</p>
+      <p>{ruleDirection.description}</p>
     </div>
   );
 }
