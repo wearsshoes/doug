@@ -502,3 +502,29 @@
     opacity: 1;
   }
 }
+
+.direction-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.direction-toggle button {
+  padding: 0.5rem 1rem;
+  border: 2px solid #646cff;
+  border-radius: 4px;
+  background: transparent;
+  color: #646cff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.direction-toggle button:hover {
+  background: #646cff22;
+}
+
+.direction-toggle button.active {
+  background: #646cff;
+  color: white;
+}

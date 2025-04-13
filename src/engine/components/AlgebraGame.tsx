@@ -3,6 +3,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Rule, Level, GameConfig, canApplyRule } from '../types/types';
 import { RuleChain, computeRuleChain, applyRuleToChain, deleteRuleFromChain } from '../types/ruleChain';
+import { BidirectionalChain, computeBidirectionalChain, applyRuleToBidirectionalChain, deleteRuleFromBidirectionalChain } from '../types/ruleChain';
 import { DraggableRule } from './DraggableRule';
 import { DroppableArea } from './DroppableArea';
 import './AlgebraGame.css';
@@ -17,20 +18,27 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
   const currentLevel = config.levels[currentLevelIndex];
   const [expandedRuleIndex, setExpandedRuleIndex] = useState<number | null>(null);
+  const [activeDirection, setActiveDirection] = useState<'forward' | 'reverse'>('forward');
 
-  const getInitialChain = (level: Level): RuleChain =>
-    computeRuleChain(level.startString, []);
+  const getInitialChain = (level: Level): BidirectionalChain =>
+    computeBidirectionalChain(level.startString, level.targetString, [], []);
 
-  const [ruleChain, setRuleChain] = useState<RuleChain>(getInitialChain(currentLevel));
+  const [bidirectionalChain, setBidirectionalChain] = useState<BidirectionalChain>(getInitialChain(currentLevel));
+
+  const activeChain = activeDirection === 'forward' ? bidirectionalChain.forward : bidirectionalChain.reverse;
 
   const resetGame = () => {
-    setRuleChain(getInitialChain(currentLevel));
+    setBidirectionalChain(getInitialChain(currentLevel));
+    setActiveDirection('forward');
+    setExpandedRuleIndex(null);
   };
 
   const selectLevel = (index: number) => {
     setCurrentLevelIndex(index);
     const level = config.levels[index];
-    setRuleChain(getInitialChain(level));
+    setBidirectionalChain(getInitialChain(level));
+    setActiveDirection('forward');
+    setExpandedRuleIndex(null);
   };
 
   const nextLevel = () => {
@@ -40,32 +48,37 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
   };
 
   const handleRuleSelect = (rule: Rule, isDrop: boolean = false) => {
-    if (ruleChain.validUpTo < ruleChain.rules.length) {
+    if (activeChain.validUpTo < activeChain.rules.length) {
       console.log('Cannot add new rule: chain contains invalid rules');
       return;
     }
 
-    const positions = rule.findApplications(ruleChain.currentString);
+    const positions = rule.findApplications(activeChain.currentString);
     if (positions.length === 0) return;
     
     const hasMultiplePositions = positions.length > 1;
     
-    setRuleChain(currentChain => {
-      const newChain = applyRuleToChain(currentChain, rule, 0);
-      console.log('Rule applied:', {
-        ruleName: rule.name,
-        ruleId: rule.id,
-        position: 0,
-        from: currentChain.currentString,
-        to: newChain.currentString,
-        targetString: currentLevel.targetString,
-        level: currentLevel.id
-      });
-      return newChain;
+    setBidirectionalChain(currentBiChain => {
+      const newBiChain = applyRuleToBidirectionalChain(currentBiChain, rule, 0, activeDirection);
+      const forward = newBiChain.forward;
+      const reverse = newBiChain.reverse;
+      let meetingPoint: string | null = null;
+      
+      for (const fStr of forward.intermediateStrings) {
+        for (const rStr of reverse.intermediateStrings) {
+          if (fStr === rStr) {
+            meetingPoint = fStr;
+            break;
+          }
+        }
+        if (meetingPoint) break;
+      }
+
+      return { ...newBiChain, meetingPoint };
     });
 
     if (!isDrop && hasMultiplePositions) {
-      setExpandedRuleIndex(ruleChain.rules.length);
+      setExpandedRuleIndex(activeChain.rules.length);
     }
   };
 
@@ -81,27 +94,49 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
       setExpandedRuleIndex(expandedRuleIndex - 1);
     }
     
-    setRuleChain(currentChain => deleteRuleFromChain(currentChain, index));
+    setBidirectionalChain(currentBiChain => 
+      deleteRuleFromBidirectionalChain(currentBiChain, index, activeDirection)
+    );
   };
 
-  const isComplete = ruleChain.currentString === currentLevel.targetString;
+  const isComplete = Boolean(bidirectionalChain.meetingPoint);
 
   const togglePositions = (index: number) => {
-    const ruleApp = ruleChain.rules[index];
-    const positions = ruleApp.rule.findApplications(ruleChain.intermediateStrings[index]);
-    if (positions.length <= 1) return;
+    const ruleApp = activeChain.rules[index];
+    if (!ruleApp) return;
+    
+    const positions = ruleApp.rule.findApplications(activeChain.intermediateStrings[index]);
+    if (!positions || positions.length <= 1) return;
 
     setExpandedRuleIndex(expandedRuleIndex === index ? null : index);
   };
 
   const changePosition = (ruleIndex: number, newPosition: number) => {
-    const newRules = [...ruleChain.rules];
-    newRules[ruleIndex] = { ...newRules[ruleIndex], position: newPosition };
-    setRuleChain(computeRuleChain(ruleChain.intermediateStrings[0], newRules));
+    setBidirectionalChain(currentBiChain => {
+      if (activeDirection === 'forward') {
+        const newRules = [...currentBiChain.forward.rules];
+        newRules[ruleIndex] = { ...newRules[ruleIndex], position: newPosition };
+        return computeBidirectionalChain(
+          currentLevel.startString,
+          currentLevel.targetString,
+          newRules,
+          currentBiChain.reverse.rules
+        );
+      } else {
+        const newRules = [...currentBiChain.reverse.rules];
+        newRules[ruleIndex] = { ...newRules[ruleIndex], position: newPosition };
+        return computeBidirectionalChain(
+          currentLevel.startString,
+          currentLevel.targetString,
+          currentBiChain.forward.rules,
+          newRules
+        );
+      }
+    });
     setExpandedRuleIndex(null);
   };
 
-  const canAddNewRules = ruleChain.validUpTo >= ruleChain.rules.length;
+  const canAddNewRules = activeChain.validUpTo >= activeChain.rules.length;
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -131,12 +166,32 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
         </div>
 
         <div className="main-content">
+          <div className="direction-toggle">
+            <button
+              onClick={() => setActiveDirection('forward')}
+              className={activeDirection === 'forward' ? 'active' : ''}
+            >
+              Forward (Start → Target)
+            </button>
+            <button
+              onClick={() => setActiveDirection('reverse')}
+              className={activeDirection === 'reverse' ? 'active' : ''}
+            >
+              Reverse (Target → Start)
+            </button>
+          </div>
+
           <div>
             <p className="level-description">{currentLevel.description}</p>
           </div>
+
           <div className="string-display">
             <div className="initial-string">
-              <span className="string-value">{ruleChain.intermediateStrings[0]}</span>
+              <span className="string-value">
+                {activeDirection === 'forward' ? 
+                  bidirectionalChain.forward.intermediateStrings[0] :
+                  bidirectionalChain.reverse.intermediateStrings[0]}
+              </span>
             </div>
           </div>
 
@@ -150,7 +205,7 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
                   </tr>
                 </thead>
                 <tbody>
-                  {ruleChain.rules.length === 0 ? (
+                  {activeChain.rules.length === 0 ? (
                     <tr>
                       <td colSpan={2}>
                         <div className="empty-state">
@@ -159,15 +214,15 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
                       </td>
                     </tr>
                   ) : (
-                    ruleChain.rules.map((ruleApp, index) => {
-                      const positions = ruleApp.rule.findApplications(ruleChain.intermediateStrings[index]);
+                    activeChain.rules.map((ruleApp, index) => {
+                      const positions = ruleApp.rule.findApplications(activeChain.intermediateStrings[index]);
                       const isExpanded = expandedRuleIndex === index;
-                      const hasMultiplePositions = positions.length > 1;
+                      const hasMultiplePositions = positions && positions.length > 1;
 
                       return (
                         <tr key={`${ruleApp.rule.id}-${index}`}>
                           <td>
-                            <div className={`applied-rule ${index >= ruleChain.validUpTo ? 'invalid' : ''}`}>
+                            <div className={`applied-rule ${index >= activeChain.validUpTo ? 'invalid' : ''}`}>
                               <div className="applied-rule-header">
                                 <span>{ruleApp.rule.name}</span>
                                 {hasMultiplePositions && (
@@ -187,7 +242,7 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
                                   ×
                                 </button>
                               </div>
-                              {isExpanded && (
+                              {isExpanded && positions && (
                                 <div className="position-options-inline">
                                   {positions.map((pos, posIndex) => (
                                     <div
@@ -207,7 +262,7 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
                             </div>
                           </td>
                           <td>
-                            <span className="string-value">{ruleChain.intermediateStrings[index + 1]}</span>
+                            <span className="string-value">{activeChain.intermediateStrings[index + 1]}</span>
                           </td>
                         </tr>
                       );
@@ -219,13 +274,17 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
 
             <div className="target-string-display">
               <div className="target-string">
-                <span className="string-value">{currentLevel.targetString}</span>
+                <span className="string-value">
+                  {activeDirection === 'forward' ? 
+                    currentLevel.targetString :
+                    currentLevel.startString}
+                </span>
               </div>
             </div>
 
-            {isComplete && (
+            {bidirectionalChain.meetingPoint && (
               <div className="win-message">
-                <p>Congratulations! You've completed this level!</p>
+                <p>Congratulations! The chains meet at: {bidirectionalChain.meetingPoint}</p>
                 {currentLevelIndex < config.levels.length - 1 && (
                   <button onClick={nextLevel} className="next-level-button">
                     Next Level
@@ -242,14 +301,19 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
             <p className="rules-hint">Green outline = rule can be applied (click or drag)</p>
           </div>
           <div className="rules-list">
-            {config.rules.map(rule => (
-              <DraggableRule
-                key={rule.id}
-                rule={rule}
-                isApplicable={canAddNewRules && canApplyRule(rule, ruleChain.currentString)}
-                onClick={() => handleRuleSelect(rule)}
-              />
-            ))}
+            {config.rules
+              .filter(rule => 
+                rule.direction === 'both' || 
+                rule.direction === activeDirection
+              )
+              .map(rule => (
+                <DraggableRule
+                  key={rule.id}
+                  rule={rule}
+                  isApplicable={canAddNewRules && canApplyRule(rule, activeChain.currentString)}
+                  onClick={() => handleRuleSelect(rule)}
+                />
+              ))}
           </div>
         </div>
       </div>

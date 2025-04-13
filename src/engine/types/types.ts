@@ -11,6 +11,7 @@ export interface Rule {
   description: string;
   findApplications: (s: string) => RuleApplication[];
   transform: (s: string, position: number) => string;
+  direction?: 'forward' | 'reverse' | 'both';
 }
 
 export interface Level {
