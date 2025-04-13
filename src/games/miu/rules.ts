@@ -1,7 +1,7 @@
-import { GameConfig, Rule, RuleApplication } from '../../../engine/types/types';
+import { Rule, RuleApplication } from '../../engine/types/types';
 
 // The four MIU rules as defined by Hofstadter
-const MIURules: Rule[] = [
+export const Rules: Rule[] = [
   {
     id: 'rule1',
     name: 'Rule I',
@@ -18,7 +18,7 @@ const MIURules: Rule[] = [
       return [];
     },
     transform: (s: string, position: number) => {
-      const apps = MIURules[0].findApplications(s);
+      const apps = Rules[0].findApplications(s);
       return apps[position]?.preview ?? s;
     }
   },
@@ -39,7 +39,7 @@ const MIURules: Rule[] = [
       return [];
     },
     transform: (s: string, position: number) => {
-      const apps = MIURules[1].findApplications(s);
+      const apps = Rules[1].findApplications(s);
       return apps[position]?.preview ?? s;
     }
   },
@@ -66,7 +66,7 @@ const MIURules: Rule[] = [
       return positions;
     },
     transform: (s: string, position: number) => {
-      const apps = MIURules[2].findApplications(s);
+      const apps = Rules[2].findApplications(s);
       return apps[position]?.preview ?? s;
     }
   },
@@ -89,42 +89,8 @@ const MIURules: Rule[] = [
       return positions;
     },
     transform: (s: string, position: number) => {
-      const apps = MIURules[3].findApplications(s);
+      const apps = Rules[3].findApplications(s);
       return apps[position]?.preview ?? s;
     }
   },
 ];
-
-export const MIUConfig: GameConfig = {
-  rules: MIURules,
-  levels: [
-    {
-      id: 'level1',
-      startString: 'MI',
-      targetString: 'MIU',
-      description: 'Convert MI to MIU - Use Rule I to add U after I',
-      difficulty: 'Easy',
-    },
-    {
-      id: 'level2',
-      startString: 'MI',
-      targetString: 'MUI',
-      description: 'Convert MI to MUI - Try using Rule II first!',
-      difficulty: 'Medium',
-    },
-    {
-      id: 'level3',
-      startString: 'MII',
-      targetString: 'MIUIU',
-      description: 'Convert MII to MIUIU - Rule II might be helpful here',
-      difficulty: 'Medium',
-    },
-    {
-      id: 'level4',
-      startString: 'MIII',
-      targetString: 'MU',
-      description: 'Convert MIII to MU - Use Rule III to replace III with U',
-      difficulty: 'Hard',
-    },
-  ]
-};

@@ -1,7 +1,7 @@
-import { MIURules } from './miu';
+import { Rules } from './rules';
 
 describe('MIU Rules', () => {
-  const [ruleI, ruleII, ruleIII, ruleIV] = MIURules;
+  const [ruleI, ruleII, ruleIII, ruleIV] = Rules;
 
   describe('Rule I: Add U after I', () => {
     it('should add U after I at the end', () => {

@@ -1,10 +1,10 @@
-import { MIUGame } from './games/miu/components/MIUGame'
+import { Game } from './games/miu/game'
 import './App.css'
 
 function App() {
   return (
     <div className="app">
-      <MIUGame />
+      <Game />
     </div>
   )
 }
