@@ -39,35 +39,49 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
     }
   };
 
-  const handleRuleSelect = (rule: Rule) => {
+  const handleRuleSelect = (rule: Rule, isDrop: boolean = false) => {
+    if (ruleChain.validUpTo < ruleChain.rules.length) {
+      console.log('Cannot add new rule: chain contains invalid rules');
+      return;
+    }
+
     const positions = rule.findApplications(ruleChain.currentString);
     if (positions.length === 0) return;
     
-    if (positions.length === 1) {
-      applyRuleAtPosition(rule, 0);
-    } else {
-      applyRuleAtPosition(rule, 0);
+    const hasMultiplePositions = positions.length > 1;
+    
+    setRuleChain(currentChain => {
+      const newChain = applyRuleToChain(currentChain, rule, 0);
+      console.log('Rule applied:', {
+        ruleName: rule.name,
+        ruleId: rule.id,
+        position: 0,
+        from: currentChain.currentString,
+        to: newChain.currentString,
+        targetString: currentLevel.targetString,
+        level: currentLevel.id
+      });
+      return newChain;
+    });
+
+    if (!isDrop && hasMultiplePositions) {
       setExpandedRuleIndex(ruleChain.rules.length);
     }
   };
 
-  const applyRuleAtPosition = (rule: Rule, position: number) => {
-    const newChain = applyRuleToChain(ruleChain, rule, position);
-    console.log('Rule applied:', {
-      ruleName: rule.name,
-      ruleId: rule.id,
-      position,
-      from: ruleChain.currentString,
-      to: newChain.currentString,
-      targetString: currentLevel.targetString,
-      level: currentLevel.id
-    });
-
-    setRuleChain(newChain);
+  const handleRuleDrop = (rule: Rule) => {
+    handleRuleSelect(rule, true);
   };
 
   const deleteRule = (index: number) => {
-    setRuleChain(deleteRuleFromChain(ruleChain, index));
+    if (expandedRuleIndex === index) {
+      setExpandedRuleIndex(null);
+    }
+    else if (expandedRuleIndex !== null && index < expandedRuleIndex) {
+      setExpandedRuleIndex(expandedRuleIndex - 1);
+    }
+    
+    setRuleChain(currentChain => deleteRuleFromChain(currentChain, index));
   };
 
   const isComplete = ruleChain.currentString === currentLevel.targetString;
@@ -86,6 +100,8 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
     setRuleChain(computeRuleChain(ruleChain.intermediateStrings[0], newRules));
     setExpandedRuleIndex(null);
   };
+
+  const canAddNewRules = ruleChain.validUpTo >= ruleChain.rules.length;
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -125,7 +141,7 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
           </div>
 
           <div className="game-workspace">
-            <DroppableArea onDrop={handleRuleSelect}>
+            <DroppableArea onDrop={handleRuleDrop}>
               <table className="transformation-table">
                 <thead>
                   <tr>
@@ -230,7 +246,7 @@ export function AlgebraGame({ config, className = '', gameName }: AlgebraGamePro
               <DraggableRule
                 key={rule.id}
                 rule={rule}
-                isApplicable={canApplyRule(rule, ruleChain.currentString)}
+                isApplicable={canAddNewRules && canApplyRule(rule, ruleChain.currentString)}
                 onClick={() => handleRuleSelect(rule)}
               />
             ))}

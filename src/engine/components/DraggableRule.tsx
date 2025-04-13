@@ -23,6 +23,8 @@ export function DraggableRule({ rule, isApplicable, onClick }: DraggableRuleProp
     }
   };
 
+  const notApplicableMessage = isApplicable ? '' : 'Cannot add new rules while there are invalid rules in the chain';
+
   return (
     <div
       ref={drag}
@@ -35,6 +37,7 @@ export function DraggableRule({ rule, isApplicable, onClick }: DraggableRuleProp
       role="button"
       tabIndex={isApplicable ? 0 : -1}
       aria-disabled={!isApplicable}
+      title={notApplicableMessage}
     >
       <h3>{rule.name}</h3>
       <p>{rule.description}</p>

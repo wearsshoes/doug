@@ -1,10 +1,14 @@
 import { AlgebraGame } from '../../engine/components/AlgebraGame';
-import { Config } from './config';
+import { Levels } from './levels';
+import { Rules } from './rules';
 
 export function Game() {
   return (
     <AlgebraGame
-      config={Config}
+      config={{
+        rules: Rules,
+        levels: Levels
+      }}
       className="miu-game"
       gameName="MIU Game"
     />
