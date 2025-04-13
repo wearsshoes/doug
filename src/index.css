@@ -10,6 +10,7 @@
   --background-color: #242424;
   --button-background: #1a1a1a;
   --link-color: #646cff;
+  --link-color-alpha: rgba(100, 108, 255, 0.1);
   --link-hover-color: #535bf2;
   --border-color: #2a2a2a;
   --success-color: #4caf50;
@@ -34,6 +35,7 @@
     --background-color: #ffffff;
     --button-background: #f9f9f9;
     --link-color: #646cff;
+    --link-color-alpha: rgba(100, 108, 255, 0.1);
     --link-hover-color: #747bff;
     --border-color: #eee;
     --success-color: #4caf50;

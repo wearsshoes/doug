@@ -21,7 +21,7 @@ export function DroppableArea({ children, onDrop }: DroppableAreaProps) {
   }));
 
   return (
-    <div ref={drop} className={`applied-rules ${isOver ? 'dropping' : ''}`}>
+    <div ref={drop} className={`droppable-area ${isOver ? 'dropping' : ''}`}>
       {children}
     </div>
   );
